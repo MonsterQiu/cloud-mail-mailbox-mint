@@ -1,0 +1,122 @@
+/* Explicit root dimensions are required by Chrome action popup auto-sizing.
+   A viewport-relative max-width creates a feedback loop with its initial width. */
+html {
+  width: 420px; min-width: 420px; max-width: 420px;
+  height: 560px; min-height: 560px; overflow: hidden; font-size: 14px;
+}
+body {
+  width: 420px; min-width: 420px; height: 560px; margin: 0;
+  display: flex; flex-direction: column; overflow: hidden; background: #f7f9fc;
+}
+button { white-space: nowrap; }
+.masthead { flex: none; height: 66px; padding: 16px 20px 10px; display: flex; align-items: center; justify-content: space-between; background: white; }
+.brand { min-width: 0; gap: 10px; }
+.brand img { width: 32px; height: 32px; flex: none; }
+.brand h1 { font-size: 17px; line-height: 1.3; letter-spacing: 0; white-space: nowrap; }
+.brand-kicker { font-size: 8px; letter-spacing: 1.6px; }
+.settings-button { display: flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 8px; background: white; color: var(--muted); font-size: 12px; }
+.settings-button svg { width: 15px; height: 15px; }
+.settings-button:hover { background: var(--paper); color: var(--blue); }
+.connection { flex: none; height: 28px; padding: 0 20px 9px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: white; color: var(--muted); font-size: 11px; }
+.connection .mono { min-width: 0; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#connection-status { flex: none; white-space: nowrap; }
+#connection-status::before { content: ''; display: inline-block; width: 6px; height: 6px; background: #9aa8bb; border-radius: 50%; margin: 0 6px 1px 0; }
+#connection-status.ready::before { background: var(--mint); }
+.tabs { flex: none; display: flex; height: 42px; padding: 0 20px; gap: 20px; border-bottom: 1px solid var(--rule); background: white; }
+.tabs button { background: none; color: var(--muted); padding: 10px 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 600; font-size: 13px; }
+.tabs button.active { color: var(--blue); border-bottom-color: var(--blue); }
+#record-count { display: inline-block; min-width: 19px; margin-left: 5px; background: #eaf0fa; border-radius: 5px; font-family: var(--mono); font-size: 10px; padding: 1px 5px; }
+main { flex: 1; min-height: 0; width: 100%; padding: 16px 20px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.notice { margin: 0 0 12px; font-size: 12px; }
+.loading-state { padding: 35px 0; text-align: center; color: var(--muted); font-size: 13px; }
+.intro { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.intro h2 { font-size: 16px; line-height: 1.4; letter-spacing: 0; margin-bottom: 3px; white-space: nowrap; }
+.intro .hint { font-size: 11px; }
+.regenerate-all { flex: none; padding: 7px 9px; font-size: 11px; border: 1px solid var(--rule); border-radius: 7px; color: var(--blue); background: white; }
+.field { margin-bottom: 11px; }
+.field > label { margin-bottom: 5px; }
+.field label { font-size: 12px; }
+.field .hint { font-size: 10px; }
+.label-line { gap: 10px; margin-bottom: 5px; }
+.label-line label, .label-line .hint { white-space: nowrap; }
+input, select { height: 38px; padding: 8px 10px; border-radius: 8px; }
+.input-group input { width: 0; flex: 1 1 0; }
+.input-group button { min-width: 38px; padding: 0 9px; }
+#prefix, #password, #domain { font-family: var(--mono); font-size: 12px; }
+.address-preview { margin-top: 5px; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.full { width: 100%; }
+.primary { min-height: 40px; padding: 10px 16px; box-shadow: none; border-radius: 8px; font-size: 13px; }
+.footnote { text-align: center; color: var(--muted); font-size: 10px; line-height: 1.6; margin-top: 9px; }
+.create-actions { display: grid; grid-template-columns: .85fr 1.4fr; gap: 7px; }
+.create-actions button { min-height: 40px; font-size: 12px; padding: 9px 7px; }
+.setup-banner { padding: 19px; border: 1px solid var(--rule); border-radius: 12px; background: white; }
+.setup-symbol { width: 42px; height: 42px; display: grid; place-items: center; background: #edf3ff; border-radius: 11px; color: var(--blue); margin-bottom: 15px; }
+.setup-symbol svg { width: 23px; height: 23px; }
+.setup-banner h2 { font-size: 19px; letter-spacing: 0; margin-bottom: 7px; }
+.setup-banner > p { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.setup-steps { list-style: none; padding: 0; margin: 16px 0 20px; display: grid; gap: 10px; counter-reset: step; }
+.setup-steps li { counter-increment: step; display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ink); }
+.setup-steps li::before { content: counter(step); display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; background: var(--paper); border: 1px solid var(--rule); color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.setup-banner .setup-note { margin-top: 10px; text-align: center; font-size: 10px; }
+.receipt { padding: 16px; border: 1px solid var(--rule); border-radius: 11px; background: white; }
+.receipt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.receipt-top .mono { font-size: 10px; color: var(--muted); }
+.receipt h2 { font-size: 18px; letter-spacing: 0; margin-bottom: 4px; }
+.receipt .hint { font-size: 11px; line-height: 1.6; }
+.tear-line { border-top: 1px dashed #c6d3e6; margin: 16px 0 14px; text-align: center; height: 1px; }
+.tear-line span { position: relative; top: -9px; background: white; padding: 0 8px; font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+.receipt label { font-size: 10px; color: var(--muted); font-weight: 400; }
+.credential { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; user-select: all; margin: 4px 0 10px; }
+.receipt .label-line { margin-bottom: 0; }
+.receipt .label-line button { padding: 0; font-size: 10px; }
+.login-link { font-size: 11px; display: block; margin-top: 3px; overflow-wrap: anywhere; }
+.receipt-actions { display: grid; grid-template-columns: 1fr 1fr 1.45fr; gap: 6px; margin: 12px 0 6px; }
+.receipt-actions button { font-size: 12px; padding: 8px; min-height: 34px; }
+.receipt-actions .primary { grid-column: auto; }
+#next-mailbox { font-size: 12px; padding: 5px; }
+.history-top { padding-bottom: 12px; }
+.history-top h2 { font-size: 16px; letter-spacing: 0; margin-bottom: 3px; }
+.history-top .hint { font-size: 11px; }
+#search { font-size: 12px; }
+.history-tools { display: flex; justify-content: space-between; align-items: center; padding: 7px 0 8px; gap: 4px; }
+.history-tools button { font-size: 11px; padding: 5px 4px; }
+.record { padding: 12px; border: 1px solid var(--rule); border-radius: 9px; background: white; margin-bottom: 9px; }
+.record-email { font-size: 12px; overflow-wrap: anywhere; margin: 8px 0 4px; }
+.record-meta { display: flex; align-items: center; justify-content: space-between; gap: 5px; font-size: 10px; color: var(--muted); }
+.record-buttons { display: flex; gap: 2px; flex-wrap: wrap; margin: 6px -4px -4px; }
+.record-buttons button { font-size: 10px; padding: 5px; }
+.record-buttons button:last-child { margin-left: auto; }
+.record-password { font-size: 12px; overflow-wrap: anywhere; padding: 7px 9px; background: var(--paper); border-radius: 6px; margin: 8px 0; user-select: all; }
+.record-message { font-size: 11px; color: #81560a; line-height: 1.65; margin: 8px 0 0; overflow-wrap: anywhere; }
+.record .login-host { font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+.codes-heading { padding-bottom: 13px; }
+.codes-heading h2 { font-size: 16px; letter-spacing: 0; margin-bottom: 3px; }
+.codes-heading .hint { font-size: 11px; }
+#code-address-select, #code-email { font-size: 11px; }
+#manual-email-wrap { margin-top: 7px; }
+.code-actions { display: grid; grid-template-columns: 1.25fr 1fr; gap: 7px; margin-bottom: 10px; }
+.code-actions button { min-height: 39px; }
+.watch-status { padding: 8px 10px; margin-bottom: 10px; border-radius: 7px; background: #edf3ff; color: #35517e; font-size: 10px; line-height: 1.6; }
+.watch-status.success { background: #e7f4ee; color: var(--mint-ink); }
+.watch-status.error { background: #fff0ed; color: var(--red); }
+.code-results { display: grid; gap: 9px; }
+.code-mail { padding: 12px; border: 1px solid var(--rule); border-radius: 9px; background: white; }
+.code-mail-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; }
+.code-mail-top span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-freshness.fresh { color: var(--mint-ink); }
+.mail-freshness.aging { color: #9a6812; }
+.mail-freshness.stale { color: var(--red); }
+.mail-freshness.unknown { color: var(--muted); }
+.code-subject { margin: 7px 0 5px; font-size: 12px; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; }
+.code-snippet { color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.code-candidates { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 7px; }
+.code-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid #aac4ff; border-radius: 8px; background: #edf3ff; color: #164cae; font-family: var(--mono); font-size: 13px; font-weight: 650; }
+.code-chip::after { content: '复制'; font-family: var(--body); font-size: 9px; font-weight: 500; opacity: .72; }
+.code-chip.possible { border-color: var(--rule); background: var(--paper); color: var(--ink); }
+.no-code { margin: 8px 0 5px; color: #81560a; font-size: 10px; }
+.codes-privacy { margin: 12px 2px 0; color: var(--muted); text-align: center; font-size: 9px; line-height: 1.6; }
+.empty { padding: 30px 10px; }
+.empty .envelope { font-size: 30px; color: #8ca7d8; }
+footer { flex: none; height: 30px; padding: 8px 20px; display: flex; justify-content: space-between; border-top: 1px solid var(--rule); color: var(--muted); background: white; font-size: 9px; line-height: 14px; }
+footer .mono { font-size: 9px; letter-spacing: .5px; }
+dialog { width: 350px; max-width: 350px; }

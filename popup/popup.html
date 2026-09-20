@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>邮箱铸造台</title><link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header class="masthead"><div class="brand"><img src="../assets/icon.svg" alt=""><div><div class="brand-kicker">CLOUD MAIL</div><h1>邮箱铸造台</h1></div></div><button id="settings" class="settings-button" type="button" title="打开设置" aria-label="打开设置"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg>设置</button></header>
+<div class="connection"><span id="connection-status">正在载入…</span><span id="site-name" class="mono"></span></div>
+<nav class="tabs" aria-label="功能"><button id="create-tab" type="button" class="active" aria-pressed="true">创建邮箱</button><button id="history-tab" type="button" aria-pressed="false">创建记录 <span id="record-count">0</span></button><button id="codes-tab" type="button" aria-pressed="false">收件码</button></nav>
+<main>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<p id="loading-state" class="loading-state" role="status">正在加载…</p>
+<section id="create-panel" aria-label="创建邮箱">
+  <div id="setup-banner" class="setup-banner" hidden>
+    <div class="setup-symbol"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></div>
+    <h2>先连接您的邮箱服务</h2><p>完成一次设置，就能生成随机邮箱和密码，并自动保存记录。</p>
+    <ol class="setup-steps"><li>确认 Cloud Mail 站点地址</li><li>填入 API Token，测试连接</li><li>返回这里，一键创建邮箱</li></ol>
+    <button id="setup" type="button" class="primary full">连接 Cloud Mail →</button>
+    <p class="setup-note">没有 Token？设置页可以用管理员账号生成。</p>
+  </div>
+  <form id="create-form" hidden>
+    <div class="intro"><div><h2>创建新邮箱</h2><p class="hint">每次随机选用四种邮箱名格式。</p></div><button id="shuffle-all" class="regenerate-all" type="button" title="重新生成邮箱名和密码" aria-label="重新生成邮箱名和密码">↻ 换一组</button></div>
+    <div class="field"><div class="label-line"><label for="prefix">邮箱名</label><span class="hint" title="昵称＋数字、人名风格、可读随机昵称、点号分隔；也可手动修改">A · B · C · E 随机</span></div><div class="input-group"><input id="prefix" class="mono" required maxlength="30" autocomplete="off" spellcheck="false" aria-describedby="email-preview"><button id="shuffle-name" type="button" title="随机生成邮箱名" aria-label="随机生成邮箱名">↻</button></div></div>
+    <div class="field"><label for="domain">邮箱域名</label><select id="domain" required></select><p id="email-preview" class="address-preview mono"></p></div>
+    <div class="field"><div class="label-line"><label for="password">临时密码</label><span id="password-length" class="hint">18 位强密码</span></div><div class="input-group"><input id="password" type="password" required minlength="12" maxlength="30" autocomplete="off" spellcheck="false"><button id="toggle-password" type="button" aria-label="显示密码" aria-pressed="false">显示</button><button id="shuffle-password" type="button" title="随机生成密码" aria-label="随机生成密码">↻</button></div></div>
+    <div class="create-actions"><button id="create-button" class="secondary" type="submit" disabled><span id="create-label">创建邮箱</span></button><button id="create-watch-button" class="primary" type="button" disabled><span id="create-watch-label">创建并等待验证码</span><span aria-hidden="true">↗</span></button></div>
+    <p id="save-note" class="footnote">账号与密码保存在此浏览器，不同步到云端。</p>
+  </form>
+  <section id="receipt" class="receipt" hidden aria-label="创建结果">
+    <div class="receipt-top"><span id="receipt-status" class="tag success">创建成功</span><span id="receipt-time" class="mono"></span></div>
+    <h2 id="receipt-heading" tabindex="-1">邮箱创建成功</h2><p id="receipt-message" class="hint">凭证已保存，可随时从创建记录找回。</p>
+    <div class="tear-line"><span>登录凭证</span></div>
+    <label>邮箱地址</label><p id="result-email" class="credential mono"></p>
+    <div class="label-line"><label>临时密码</label><button id="result-reveal" type="button" class="small-button" aria-pressed="false">显示密码</button></div><p id="result-password" class="credential mono"></p>
+    <label>登录网址</label><a id="result-link" class="login-link" target="_blank" rel="noreferrer"></a>
+    <div class="receipt-actions"><button id="copy-email" type="button" class="secondary">复制邮箱</button><button id="copy-password" type="button" class="secondary">复制密码</button><button id="copy-all" type="button" class="primary">复制全部凭证</button></div>
+    <button id="next-mailbox" type="button" class="small-button full">生成下一组 →</button>
+  </section>
+</section>
+<section id="history-panel" hidden aria-label="创建记录">
+  <div class="history-top"><div><h2>创建记录</h2><p class="hint">查找、复制或导出已保存的邮箱。</p></div></div>
+  <input id="search" type="search" placeholder="搜索邮箱地址…" aria-label="搜索邮箱地址" autocomplete="off">
+  <div class="history-tools"><div><button id="export-csv" type="button" class="small-button">导出 CSV</button><button id="export-json" type="button" class="small-button">JSON 备份</button></div><button id="clear-history" type="button" class="small-button danger">清空记录</button></div>
+  <div id="history-list"></div><button id="show-more" type="button" class="secondary full" hidden>显示更多</button>
+</section>
+<section id="codes-panel" hidden aria-label="收件码">
+  <div class="codes-heading"><div><h2>获取收件码</h2><p class="hint">选择邮箱，插件会查找最新收件和验证码。</p></div></div>
+  <div class="field"><label for="code-address-select">收件邮箱</label><select id="code-address-select" class="mono" aria-label="选择收件邮箱"></select><div id="manual-email-wrap" hidden><input id="code-email" class="mono" type="text" inputmode="email" maxlength="285" autocomplete="off" spellcheck="false" placeholder="输入完整邮箱地址"></div><p class="hint">默认使用最近创建的邮箱；选择“手动输入”可查询已有地址。</p></div>
+  <div class="code-actions"><button id="watch-code" type="button" class="primary">等待收件码</button><button id="refresh-code" type="button" class="secondary">立即刷新</button></div>
+  <div id="watch-status" class="watch-status" role="status" aria-live="polite">等待期间请保持弹窗打开，最长 2 分钟。</div>
+  <div id="code-results" class="code-results"><div class="empty"><div class="envelope">✉</div><strong>还没有查询</strong><p class="hint">点击“等待收件码”或“立即刷新”。</p></div></div>
+  <p class="codes-privacy">邮件正文仅用于本次本地识别，不会保存到创建记录。</p>
+</section>
+</main>
+<footer><span>记录仅保存在此浏览器</span><span class="mono">v1.0.5</span></footer>
+<dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog"><h3 id="confirm-title"></h3><p id="confirm-message"></p><div class="dialog-actions"><button value="cancel" class="secondary" autofocus>取消</button><button id="confirm-yes" value="yes" class="primary">确认</button></div></form></dialog>
+<script type="module" src="popup.js"></script>
+</body></html>

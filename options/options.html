@@ -1,0 +1,24 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>连接与设置 · 邮箱铸造台</title><link rel="stylesheet" href="../assets/common.css"><link rel="stylesheet" href="options.css"></head>
+<body><div class="page"><header class="page-header"><div class="brand"><img src="../assets/icon.svg" alt=""><div><div class="brand-kicker">CLOUD MAIL / MAILBOX MINT</div><h1>邮箱铸造台</h1></div></div><span class="tag">连接与设置</span></header>
+<main><div class="page-intro"><p class="eyebrow">您的邮箱，随手创建。</p><h2>连接一次。以后只需一键。</h2><p>为您的 Cloud Mail 配置连接，让每个新地址都有独立的登录凭证。</p></div>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<form id="settings-form"><section class="card"><div class="card-heading"><h3>连接邮箱服务</h3><span id="token-state" class="tag">尚未配置</span></div>
+<div class="field"><label for="base-url">Cloud Mail 站点地址</label><input id="base-url" type="url" required spellcheck="false" autocomplete="off" placeholder="https://webmail.sisyphusx.com"><p class="hint">填写登录网站的根地址，不带 /api。切换站点后需重新填写 Token。</p></div>
+<div class="field"><div class="label-line"><label for="api-token">API Token</label><button id="clear-token" class="small-button danger" type="button">移除已存 Token</button></div><input id="api-token" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴 Token 本身，不加 Bearer"><p id="token-hint" class="hint">使用 cloud-mail 的开放 API Token；不能使用网页登录 Token。</p></div>
+<p class="hint">Token 仅存于此浏览器，权限包含创建用户和查询邮件，请仅在自己的电脑使用。</p>
+<div class="connection-actions"><button id="test-connection" class="secondary" type="button">保存并测试连接</button><span id="tested-at" class="hint"></span></div>
+</section>
+<section class="card"><div class="card-heading"><h3>新邮箱的默认值</h3><span class="hint">随时可以调整</span></div>
+<div class="field"><div class="label-line"><label for="domains">可用邮箱域名</label><button id="use-domains" type="button" class="small-button" hidden>使用检测到的域名</button></div><textarea id="domains" rows="4" spellcheck="false" required></textarea><p class="hint">每行一个，须已在 Cloud Mail 中配置收件。</p></div>
+<div class="two-columns"><div class="field"><label for="default-domain">默认域名</label><select id="default-domain"></select></div><div class="field"><label for="length">密码长度</label><input id="length" type="number" min="12" max="30" required></div></div>
+<div class="field"><label for="role-name">角色名称 <span class="hint">可选</span></label><input id="role-name" maxlength="50" placeholder="留空，使用系统默认角色" autocomplete="off"><p class="hint">填写时须与后台名称完全一致。请确保默认角色为普通用户。</p></div>
+<label class="check-row"><input id="save-passwords" type="checkbox"><span>在本地记录中保存密码<br><span class="hint">开启后为本机明文存储。关闭会移除已有记录的密码，新密码仅保留在浏览器会话中。</span></span></label>
+</section>
+<div class="save-bar"><span class="hint">仅使用本机存储，无统计或云同步。</span><button id="save-settings" class="primary" type="submit">保存设置</button></div>
+</form>
+<details class="card token-card"><summary>没有 API Token？用管理员账号生成 <span>↗</span></summary><p class="hint token-description">生成会替换站点现有的全局 API Token，其他使用旧 Token 的脚本将失效。管理员密码仅用于本次请求，不会保存。</p>
+<form id="token-form"><div class="field"><label for="admin-email">管理员邮箱</label><input id="admin-email" type="email" required autocomplete="off" spellcheck="false"></div><div class="field"><label for="admin-password">管理员密码</label><input id="admin-password" type="password" required autocomplete="off"></div><button id="generate-token" type="submit" class="secondary">生成并保存新 Token</button></form></details>
+<p class="closing-note">创建记录随扩展卸载而删除，请定期从弹窗导出备份。删除本地记录不会删除服务器邮箱。</p>
+</main><footer><span>MAILBOX MINT</span><span>本地凭证 · v1.0.5</span></footer></div>
+<dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog"><h3 id="confirm-title"></h3><p id="confirm-message"></p><div class="dialog-actions"><button value="cancel" class="secondary" autofocus>取消</button><button id="confirm-yes" value="yes" class="primary">确认</button></div></form></dialog>
+<script type="module" src="options.js"></script></body></html>
