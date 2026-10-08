@@ -2,9 +2,10 @@ const $ = value => document.querySelector(value);
 const shareId = location.pathname.match(/^\/s\/([a-f0-9]{32})\/?$/)?.[1];
 let grant, timer, deadline = 0, started = 0, generation = 0, watching = false, querying = false;
 function notice(message = '', success = false) { $('#notice').textContent = message; $('#notice').hidden = !message; $('#notice').classList.toggle('success',success); }
+function watchStatus(message = '') { $('#watch-status').textContent = message; $('#watch-status').hidden = !message; }
 function stop(message = '') {
   clearTimeout(timer); timer = null; watching = false; deadline = 0; generation++;
-  $('#wait').textContent = '等待新验证码'; $('#watch-status').textContent = message;
+  $('#wait').textContent = '等待新验证码'; watchStatus(message);
 }
 function locked(message = '') {
   stop(); grant = null; $('#inbox-panel').hidden = true; $('#login-panel').hidden = false;
@@ -33,9 +34,8 @@ function render(messages) {
   const list = $('#messages'); list.replaceChildren();
   if (!messages.length) {
     const empty = document.createElement('div'); empty.className = 'empty';
-    const title = document.createElement('h3'); title.textContent = '还没有新的验证码';
-    const hint = document.createElement('p'); hint.textContent = '只显示授权创建后收到的邮件，您可以继续等待。';
-    empty.append(title,hint); list.append(empty); return;
+    const title = document.createElement('h2'); title.textContent = '暂无新验证码';
+    empty.append(title); list.append(empty); return;
   }
   for (const mail of messages) {
     const card = document.createElement('article'); card.className = 'message';
@@ -50,9 +50,8 @@ function render(messages) {
         button.addEventListener('click',async()=>{try { await navigator.clipboard.writeText(value); notice('验证码已复制。',true); } catch { notice('复制失败，请选择验证码后手动复制。'); }});
         codes.append(button);
       }
-      const hint = document.createElement('p'); hint.className = 'copy-note'; hint.textContent = '点击验证码即可复制，请优先使用最新邮件中的验证码。';
-      card.append(codes,hint);
-    } else { const hint = document.createElement('p'); hint.className = 'no-code'; hint.textContent = '收到一封新邮件，暂未识别到明确验证码。'; card.append(hint); }
+      card.append(codes);
+    } else { const hint = document.createElement('p'); hint.className = 'no-code'; hint.textContent = '未识别到验证码'; card.append(hint); }
     list.append(card);
   }
 }
@@ -73,14 +72,14 @@ function failed(error) {
 async function poll(token) {
   try {
     const value = await query(token); if (!value || token !== generation) return;
-    if (value.messages.some(mail=>mail.codes.length)) { stop('已找到验证码，点击即可复制。'); return; }
+    if (value.messages.some(mail=>mail.codes.length)) { stop(); return; }
     const remaining = deadline-Date.now(); if (remaining<=0) { stop('等待已结束，您可以再次刷新或等待。'); return; }
     const elapsed = Date.now()-started; const delay=Math.min(elapsed<30000?5000:elapsed<60000?10000:15000,remaining);
-    $('#watch-status').textContent=`等待新邮件 · ${Math.ceil(delay/1000)} 秒后再查 · 最长剩余 ${Math.ceil(remaining/1000)} 秒`;
+    watchStatus(`等待中 · ${Math.ceil(delay/1000)} 秒后刷新 · 剩余 ${Math.ceil(remaining/1000)} 秒`);
     timer=setTimeout(()=>poll(token),delay);
   } catch(error) {
     if(token!==generation) return;
-    if(error.status===429 && deadline>Date.now()) { $('#watch-status').textContent='正在等待下一次查询…'; timer=setTimeout(()=>poll(token),Math.min(error.retryAfter*1000,15000)); }
+    if(error.status===429 && deadline>Date.now()) { watchStatus('等待下一次查询…'); timer=setTimeout(()=>poll(token),Math.min(error.retryAfter*1000,15000)); }
     else failed(error);
   }
 }
@@ -92,14 +91,14 @@ $('#login-form').addEventListener('submit',async event=>{
 });
 $('#refresh').addEventListener('click',async()=>{
   stop('正在查询…'); notice(); const token=generation;
-  try { const value=await query(token); if(value) $('#watch-status').textContent=value.messages.some(mail=>mail.codes.length)?'点击验证码即可复制。':'暂未收到新的验证码。'; }
+  try { const value=await query(token); if(value) watchStatus(); }
   catch(error){ if(token===generation) failed(error); }
 });
 $('#wait').addEventListener('click',()=>{
   if(watching){ stop('等待已停止。'); return; }
   if(querying){ notice('当前查询尚未完成，请稍候。'); return; }
   notice(); watching=true; started=Date.now(); deadline=started+120000; const token=++generation;
-  $('#wait').textContent='停止等待'; $('#watch-status').textContent='正在检查新验证码…'; poll(token);
+  $('#wait').textContent='停止等待'; watchStatus('正在查询…'); poll(token);
 });
 $('#logout').addEventListener('click',async()=>{try{await api('/api/logout',{});locked();}catch(error){notice(error.message);}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden && watching) stop('页面进入后台，等待已暂停。');});
