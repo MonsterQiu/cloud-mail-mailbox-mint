@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cloud Mail 邮箱铸造台",
   "description": "一键创建 Cloud Mail 独立邮箱，生成随机名称与强密码，在本机保存和复制登录凭证。",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "minimum_chrome_version": "114",
   "permissions": ["storage", "clipboardWrite"],
   "host_permissions": ["https://webmail.sisyphusx.com/*"],

@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 await generateIcons(new URL('../assets/', import.meta.url));
 execFileSync(process.execPath, ['scripts/check.js'], { cwd: root, stdio: 'inherit' });
 const staging = await mkdtemp(join(tmpdir(), 'mailbox-mint-package-'));
-const items = ['manifest.json', 'background', 'popup', 'options', 'lib', 'assets', 'migrations', 'README.md', 'PRIVACY.md'];
+const items = ['manifest.json', 'background', 'popup', 'options', 'lib', 'assets', 'migrations', 'README.md', 'PRIVACY.md', 'LICENSE'];
 for (const item of items) await cp(join(root, item), join(staging, item), { recursive: true });
 const archive = join(staging, 'cloud-mail-mailbox-mint.zip');
 execFileSync('/usr/bin/zip', ['-X', '-qr', archive, ...items], { cwd: staging });

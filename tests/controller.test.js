@@ -112,3 +112,61 @@ test('inbox lookup rejects other domains and malformed addresses before API acce
   for(const email of ['x@foreign.example','bad','x\'@sisyphusx.com']) await assert.rejects(f.controller.dispatch({type:'inbox',email}));
   assert.equal(calls,0);
 });
+
+test('pinning an existing alias persists selection without creating a user or exposing the token', async () => {
+  const f = fixture();
+  const result = await f.controller.dispatch({type:'pin-inbox',email:'  Existing.Alias@SISYPHUSX.com '});
+  assert.deepEqual(result.pinnedInboxes,['existing.alias@sisyphusx.com']);
+  assert.equal(result.preferredInbox,'existing.alias@sisyphusx.com');
+  assert.ok(!('token' in result));
+  assert.equal(f.calls.length,0); assert.deepEqual(f.local.read().vault.records,[]);
+  const reopened = makeController({storage:f.storage,api:f.api});
+  assert.deepEqual((await reopened.dispatch({type:'snapshot'})).config.pinnedInboxes,result.pinnedInboxes);
+  await reopened.dispatch({type:'pin-inbox',email:'existing.alias@sisyphusx.com'});
+  assert.equal(f.local.read().vault.config.pinnedInboxes.length,1);
+  await reopened.dispatch({type:'unpin-inbox',email:'existing.alias@sisyphusx.com'});
+  assert.deepEqual(f.local.read().vault.config.pinnedInboxes,[]);
+  assert.equal(f.local.read().vault.config.preferredInbox,'');
+});
+
+test('pinned inboxes survive settings updates but are cleared when changing servers', async () => {
+  const f = fixture();
+  await f.controller.dispatch({type:'pin-inbox',email:'existing.alias@sisyphusx.com'});
+  await f.controller.dispatch({type:'save-config',config:{...f.local.read().vault.config,token:'',passwordLength:20}});
+  assert.equal(f.local.read().vault.config.preferredInbox,'existing.alias@sisyphusx.com');
+  assert.deepEqual(f.local.read().vault.config.pinnedInboxes,['existing.alias@sisyphusx.com']);
+  await f.controller.dispatch({type:'save-config',config:{...f.local.read().vault.config,baseUrl:'https://other.example.com',token:''}});
+  assert.deepEqual(f.local.read().vault.config.pinnedInboxes,[]);
+  assert.equal(f.local.read().vault.config.preferredInbox,'');
+});
+
+test('removing a configured domain removes its pinned inboxes and preferred selection', async () => {
+  const f = fixture();
+  await f.controller.dispatch({type:'pin-inbox',email:'existing.alias@sisyphusx.com'});
+  await f.controller.dispatch({type:'save-config',config:{...f.local.read().vault.config,domains:['athinker.net'],defaultDomain:'athinker.net'}});
+  assert.deepEqual(f.local.read().vault.config.pinnedInboxes,[]);
+  assert.equal(f.local.read().vault.config.preferredInbox,'');
+});
+
+test('invalid pinned addresses and storage failures never create remote mailboxes', async () => {
+  const f = fixture(); const before = JSON.stringify(f.local.read());
+  for (const email of ['other@foreign.example','bad',"x'@sisyphusx.com"]) {
+    await assert.rejects(f.controller.dispatch({type:'pin-inbox',email}));
+  }
+  assert.equal(JSON.stringify(f.local.read()),before);
+  f.local.fail = true;
+  await assert.rejects(f.controller.dispatch({type:'pin-inbox',email:'existing@sisyphusx.com'}),/storage full/);
+  assert.equal(JSON.stringify(f.local.read()),before); assert.equal(f.calls.length,0);
+});
+
+test('a mixed inbox response never displays a different recipients message', async () => {
+  const target = 'existing.alias@sisyphusx.com';
+  const f = fixture({api:{inbox:async()=>[
+    {emailId:3,toEmail:'other@sisyphusx.com',subject:'验证码 123456'},
+    {emailId:2,toEmail:target.toUpperCase(),subject:'验证码 482913'},
+    {emailId:1,subject:'验证码 654321'},
+  ]}});
+  const result = await f.controller.dispatch({type:'inbox',email:target});
+  assert.deepEqual(result.mails.map(mail=>mail.emailId),[2]);
+  assert.equal(result.mails[0].codes[0].value,'482913');
+});

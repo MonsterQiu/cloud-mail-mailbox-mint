@@ -99,15 +99,37 @@ function renderHistory() {
 function renderCodeAddresses() {
   const select = $('#code-address-select');
   const previous = select.value;
-  const addresses = [...new Set(state.records
-    .filter(row => ['created', 'uncertain'].includes(row.status))
+  const pinned = state.config.pinnedInboxes || [];
+  const created = [...new Set(state.records
+    .filter(row => ['created', 'uncertain'].includes(row.status) && row.loginUrl === state.config.baseUrl &&
+      state.config.domains.includes(row.email.split('@')[1]) && !pinned.includes(row.email))
     .map(row => row.email))];
-  select.replaceChildren(...addresses.map(email => new Option(email, email)), new Option('手动输入其他邮箱…', '__manual__'));
-  select.value = addresses.includes(previous) || previous === '__manual__' ? previous : addresses[0] || '__manual__';
+  const group = (label, emails) => {
+    const element = document.createElement('optgroup'); element.label = label;
+    element.append(...emails.map(email => new Option(email, email))); return element;
+  };
+  const addresses = [...pinned, ...created];
+  select.replaceChildren(...(pinned.length ? [group('固定邮箱', pinned)] : []),
+    ...(created.length ? [group('创建记录', created)] : []), new Option('手动输入其他邮箱…', '__manual__'));
+  const preferred = state.config.preferredInbox;
+  select.value = addresses.includes(preferred) ? preferred : addresses.includes(previous) || previous === '__manual__'
+    ? previous : addresses[0] || '__manual__';
   $('#manual-email-wrap').hidden = select.value !== '__manual__';
+  renderPinButton();
 }
 function selectedCodeEmail() {
   return $('#code-address-select').value === '__manual__' ? $('#code-email').value.trim() : $('#code-address-select').value;
+}
+function renderPinButton() {
+  const email = selectedCodeEmail().trim().toLowerCase();
+  const pinned = (state.config.pinnedInboxes || []).includes(email);
+  $('#pin-inbox').textContent = pinned ? '取消固定' : '固定此邮箱';
+  $('#pin-inbox').disabled = !email;
+}
+function resetCodeResults() {
+  stopCodeWatch('邮箱已选择。点击“立即刷新”查看邮件，或等待新验证码。');
+  renderInbox({ mails: [] }, '单独查询此邮箱', '只显示当前收件地址的邮件。');
+  renderPinButton();
 }
 function setWatchStatus(message, type = '') {
   $('#watch-status').textContent = message;
@@ -268,6 +290,7 @@ async function createMailbox(watchAfterCreate = false) {
       selectTab('codes');
       $('#code-address-select').value = value.email;
       $('#manual-email-wrap').hidden = true;
+      state.config = await send('select-inbox', { email: value.email }); renderPinButton();
       setWatchStatus('邮箱已创建，正在建立新邮件基线…');
       await startCodeWatch();
     } else showResult(value);
@@ -297,12 +320,20 @@ on('#refresh-code', 'click', async () => {
     setWatchStatus(found ? '查询完成，点击验证码即可复制。' : '查询完成，暂未识别到验证码。', found ? 'success' : '');
   } catch (error) { setWatchStatus(error.message, 'error'); }
 });
-on('#code-address-select', 'change', () => {
+on('#code-address-select', 'change', async () => {
   $('#manual-email-wrap').hidden = $('#code-address-select').value !== '__manual__';
-  if (codeWatching) stopCodeWatch('邮箱已更改，请重新开始等待。');
+  resetCodeResults();
   if ($('#code-address-select').value === '__manual__') $('#code-email').focus({ preventScroll: true });
+  state.config = await send('select-inbox', { email: $('#code-address-select').value === '__manual__' ? '' : selectedCodeEmail() });
 });
-on('#code-email', 'input', () => { if (codeWatching) stopCodeWatch('邮箱已更改，请重新开始等待。'); });
+on('#code-email', 'input', resetCodeResults);
+on('#pin-inbox', 'click', async () => {
+  const email = selectedCodeEmail().trim().toLowerCase();
+  const pinned = (state.config.pinnedInboxes || []).includes(email);
+  state.config = await send(pinned ? 'unpin-inbox' : 'pin-inbox', { email });
+  renderCodeAddresses(); resetCodeResults();
+  notify(pinned ? '已取消本机固定，服务器邮箱保留。' : '已固定到收件邮箱列表，重开插件仍可直接选择。');
+});
 for (const format of ['csv', 'json']) on(`#export-${format}`, 'click', async () => {
   if (!await confirmAction('导出本地记录？', format === 'csv'
     ? '文件包含已保存的密码，请妥善保管。CSV 会为公式样式的内容添加保护前缀；需要原样密码请用 JSON 备份。'

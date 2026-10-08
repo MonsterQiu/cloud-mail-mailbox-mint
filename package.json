@@ -1,6 +1,7 @@
 {
   "name": "cloud-mail-mailbox-mint",
-  "version": "1.0.5",
+  "version": "1.0.6",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

@@ -2,6 +2,15 @@
 
 Chrome Manifest V3 扩展，面向 maillab/cloud-mail（已核对 MonsterQiu/cloud-mail 的开放 API）。一键生成随机邮箱名和强密码，创建独立用户，并在本地留存凭证。
 
+## v1.0.6 固定已有邮箱
+
+- “收件码”选择“手动输入其他邮箱”，输入已有完整地址后点“固定此邮箱”。独立用户、管理员账号下的子邮箱均可按收件地址单独查询。
+- 固定邮箱列在下拉框顶部，记住上次选择；关闭重开后仍可直接查询，不需要重新创建邮箱或设置密码。
+- 地址仅存于本机配置，最多固定 50 个；切换服务器会清空本机固定列表。设置页更改域名时保留仍然可用的地址。
+- 切换地址会停止等待并清除上一邮箱的显示结果；后台再次核对返回邮件的完整收件地址。
+- 固定列表不会增加自动查询；仍仅在点击“立即刷新”或“等待收件码”时使用接口。
+- 新版安装包包含 MIT License。
+
 ## v1.0.5 北京时间显示
 
 - D1 的 `CURRENT_TIMESTAMP` 是 UTC；插件继续使用 UTC 做验证码新鲜度判断，不改变服务端邮件数据。
@@ -42,7 +51,7 @@ Chrome Manifest V3 扩展，面向 maillab/cloud-mail（已核对 MonsterQiu/clo
 
 修复真实 Chrome 弹窗在自动测量时被 `max-width:100vw` 挤窄的问题：html/body 明确为 420 × 560，导航固定，内容区独立滚动。未配置时只显示连接引导；已配置时全部创建表单与按钮首屏可见。简化标题、压缩空白，设置按钮增加文字，记录按卡片显示。
 
-如果您已经安装过：**不要移除扩展**。将新版文件覆盖到原来加载的同一个文件夹，然后在 `chrome://extensions` 中点击本扩展的刷新/重新加载按钮。原路径更新会保留 Token 和本地记录。界面右下角 `v1.0.5` 表示已加载新版。若原来加载的就是本项目 `dist/cloud-mail-mailbox-mint`，该目录已经更新，直接刷新即可。
+如果您已经安装过：**不要移除扩展**。将新版文件覆盖到原来加载的同一个文件夹，然后在 `chrome://extensions` 中点击本扩展的刷新/重新加载按钮。原路径更新会保留 Token 和本地记录。界面右下角 `v1.0.6` 表示已加载新版。若原来加载的就是本项目 `dist/cloud-mail-mailbox-mint`，该目录已经更新，直接刷新即可。
 
 ## 安装与连接
 
@@ -118,3 +127,7 @@ npm run preview
 - [Chrome storage](https://developer.chrome.com/docs/extensions/reference/api/storage)
 
 这是个人工具，未上架 Chrome 应用商店。无需替换原邮箱项目，也无需额外部署 Worker。
+
+## 许可证
+
+本扩展采用 [MIT License](LICENSE)，Copyright (c) 2026 MonsterQiu。Cloud Mail 服务本身遵循其原项目许可证。

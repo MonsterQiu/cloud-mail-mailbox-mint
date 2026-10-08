@@ -42,14 +42,14 @@
 </section>
 <section id="codes-panel" hidden aria-label="收件码">
   <div class="codes-heading"><div><h2>获取收件码</h2><p class="hint">选择邮箱，插件会查找最新收件和验证码。</p></div></div>
-  <div class="field"><label for="code-address-select">收件邮箱</label><select id="code-address-select" class="mono" aria-label="选择收件邮箱"></select><div id="manual-email-wrap" hidden><input id="code-email" class="mono" type="text" inputmode="email" maxlength="285" autocomplete="off" spellcheck="false" placeholder="输入完整邮箱地址"></div><p class="hint">默认使用最近创建的邮箱；选择“手动输入”可查询已有地址。</p></div>
+  <div class="field"><div class="label-line"><label for="code-address-select">收件邮箱</label><button id="pin-inbox" type="button" class="small-button">固定此邮箱</button></div><select id="code-address-select" class="mono" aria-label="选择收件邮箱"></select><div id="manual-email-wrap" hidden><label for="code-email" class="hint">已有邮箱地址</label><input id="code-email" class="mono" type="text" inputmode="email" maxlength="285" autocomplete="off" spellcheck="false" placeholder="输入完整邮箱地址"></div><p class="hint">已有邮箱和管理员子邮箱均可单独取码；固定后会保留在列表中。</p></div>
   <div class="code-actions"><button id="watch-code" type="button" class="primary">等待收件码</button><button id="refresh-code" type="button" class="secondary">立即刷新</button></div>
   <div id="watch-status" class="watch-status" role="status" aria-live="polite">等待期间请保持弹窗打开，最长 2 分钟。</div>
   <div id="code-results" class="code-results"><div class="empty"><div class="envelope">✉</div><strong>还没有查询</strong><p class="hint">点击“等待收件码”或“立即刷新”。</p></div></div>
   <p class="codes-privacy">邮件正文仅用于本次本地识别，不会保存到创建记录。</p>
 </section>
 </main>
-<footer><span>记录仅保存在此浏览器</span><span class="mono">v1.0.5</span></footer>
+<footer><span>记录仅保存在此浏览器</span><span class="mono">v1.0.6</span></footer>
 <dialog id="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog"><h3 id="confirm-title"></h3><p id="confirm-message"></p><div class="dialog-actions"><button value="cancel" class="secondary" autofocus>取消</button><button id="confirm-yes" value="yes" class="primary">确认</button></div></form></dialog>
 <script type="module" src="popup.js"></script>
 </body></html>

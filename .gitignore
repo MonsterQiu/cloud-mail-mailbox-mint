@@ -4,3 +4,5 @@ dist/
 qa/
 *.local.json
 .env*
+.playwright-cli/
+output/
