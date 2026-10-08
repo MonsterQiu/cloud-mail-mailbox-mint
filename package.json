@@ -5,7 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
+    "test": "node --test tests/*.test.js code-share/tests/*.test.js",
+    "preview:share": "node code-share/dev.js",
+    "check:share": "node code-share/scripts/check.js",
     "check": "node scripts/check.js",
     "package": "node scripts/package.js",
     "preview": "node dev/server.js"

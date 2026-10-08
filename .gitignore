@@ -6,3 +6,7 @@ qa/
 .env*
 .playwright-cli/
 output/
+.wrangler/
+.dev.vars*
+code-share/wrangler.local.json
+code-share/private/
