@@ -23,7 +23,8 @@ const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_
 const key = secret => crypto.subtle.importKey('raw', encoder.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign','verify']);
 
 export async function signSession(grant, secret, now) {
-  const exp = Math.min(Math.floor(now / 1000) + SESSION_SECONDS, Math.floor(grant.expires_at / 1000));
+  const sessionEnd = Math.floor(now / 1000) + SESSION_SECONDS;
+  const exp = grant.expires_at === 0 ? sessionEnd : Math.min(sessionEnd, Math.floor(grant.expires_at / 1000));
   const payload = encode(encoder.encode(JSON.stringify({gid:grant.id,exp})));
   const signed = `v1.${payload}`;
   const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await key(secret), encoder.encode(signed)));

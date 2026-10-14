@@ -12,12 +12,12 @@ function locked(message = '') {
   $('#messages').replaceChildren(); $('#mailbox').textContent = ''; $('#expiry').textContent = '';
   $('#connection').textContent = '待验证'; $('#connection').classList.remove('ready'); notice(message);
 }
-function fullDate(value) { return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value)); }
+function fullDate(value) { return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value)); }
 function mailDate(value) { const utc = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? value.replace(' ','T')+'Z' : value; return fullDate(utc)+' 北京时间'; }
 function unlocked(value) {
   if (value.id !== shareId) return locked();
   grant = value; $('#login-panel').hidden = true; $('#inbox-panel').hidden = false;
-  $('#mailbox').textContent = value.email; $('#expiry').textContent = `有效期至 ${fullDate(value.expiresAt)} 北京时间`;
+  $('#mailbox').textContent = value.email; $('#expiry').textContent = value.expiresAt === null ? '长期有效' : `有效期至 ${fullDate(value.expiresAt)} 北京时间`;
   $('#connection').textContent = '已验证'; $('#connection').classList.add('ready'); notice();
 }
 async function api(path, body) {

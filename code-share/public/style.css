@@ -69,6 +69,8 @@ input[type=password], input[type=email] { font: 14px var(--mono); }
 .grant p { font: 14px/1.6 var(--mono); overflow-wrap: anywhere; }
 .grant .hint { font: 14px/1.6 var(--body); }
 .grant-top { display: flex; justify-content: space-between; gap: 12px; }
+.grant-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 14px; }
+.grant-actions .secondary { width: auto; }
 .credential-block { background: var(--paper); border-radius: 8px; padding: 16px; font: 14px/1.8 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
 .danger { color: var(--error); }
 @media (max-width: 600px) {

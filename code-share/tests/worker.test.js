@@ -27,7 +27,7 @@ function fixture(){
  const env={MAIL_DB:d1(mail,true),SHARE_DB:d1(shares),SESSION_SECRET:'session-test-only-'.repeat(4),ADMIN_KEY:'admin-test-only-'.repeat(4),ALLOWED_DOMAINS:'example.test',AUTH_LIMITER:{limit:async()=>({success:true})},ASSETS:{fetch:async()=>new Response('fixture page')}};
  const worker=makeWorker({now:()=>now});
  const request=(path,{body,cookie,admin=false,origin=ORIGIN,method}={})=>worker.fetch(new Request(ORIGIN+path,{method:method||(body===undefined?'GET':'POST'),headers:{...(body===undefined?{}:{'Content-Type':'application/json',Origin:origin}),...(cookie?{Cookie:cookie}:{}),...(admin?{Authorization:`Bearer ${env.ADMIN_KEY}`}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})}),env);
- async function create(){const response=await request('/api/admin/grants',{body:{email:TARGET,label:'Fixture recipient',days:30},admin:true});assert.equal(response.status,201);return response.json();}
+ async function create(options={days:30}){const response=await request('/api/admin/grants',{body:{email:TARGET,label:'Fixture recipient',...options},admin:true});assert.equal(response.status,201);return response.json();}
  async function login(grant){const response=await request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode}});assert.equal(response.status,200);return response.headers.get('Set-Cookie').split(';')[0];}
  function addMail(id,email=TARGET,{type=0,isDel=0,subject='验证码 482913',text='您的验证码是 482913。',content=null}={}){mail.prepare('INSERT INTO email(email_id,to_email,type,is_del,send_email,name,create_time,subject,text,content) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id,email,type,isDel,'login@example.test','Example Login','2026-10-08 02:01:00',subject,text,content);}
  return {mail,shares,env,request,create,login,addMail,tick:ms=>{now+=ms;},now:()=>now};
@@ -68,7 +68,9 @@ test('only new, received and non-deleted mail for the authorized address can be 
 test('client mailbox parameters, forged cookies and cross-origin login are rejected',async()=>{
  const f=fixture();const grant=await f.create();const cookie=await f.login(grant);
  assert.equal((await f.request('/api/codes?email=private@example.test',{cookie})).status,400);
- assert.equal((await f.request('/api/codes',{cookie:cookie.slice(0,-1)+'x'})).status,401);
+ // Alter a full signature character, not the unused padding bits of its last base64 character.
+ const forged=cookie.slice(0,-8)+(cookie.at(-8)==='a'?'b':'a')+cookie.slice(-7);
+ assert.equal((await f.request('/api/codes',{cookie:forged})).status,401);
  assert.equal((await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode,email:'private@example.test'}})).status,400);
  assert.equal((await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode},origin:'https://evil.example'})).status,403);
 });
@@ -109,10 +111,97 @@ test('oversized, malformed or non-object login JSON is rejected',async()=>{
 });
 test('grant creation rejects missing or foreign mailboxes and unreasonable expiry',async()=>{
  const f=fixture();
- for(const [email,days,status] of [['missing@example.test',30,404],['x@foreign.test',30,400],[TARGET,100,400],[TARGET,0,400]]){
+ for(const [email,days,status] of [['missing@example.test',30,404],['x@foreign.test',30,400],[TARGET,3651,400],[TARGET,-1,400],[TARGET,0.5,400],[TARGET,null,400],[TARGET,'365',400],[TARGET,false,400]]){
   assert.equal((await f.request('/api/admin/grants',{body:{email,days},admin:true})).status,status);
  }
  assert.equal(f.shares.prepare('SELECT COUNT(*) AS n FROM share_grants').get().n,0);
+});
+test('new grants default to a year and accept two years or permanent validity',async()=>{
+ const f=fixture();const day=86400000;
+ for(const [options,expected] of [[{},f.now()+365*day],[{days:730},f.now()+730*day],[{days:3650},f.now()+3650*day],[{days:0},null]]){
+  const created=await f.create(options);assert.equal(created.grant.expiresAt,expected);
+  const row=f.shares.prepare('SELECT expires_at FROM share_grants WHERE id=?').get(created.grant.id);
+  assert.equal(row.expires_at,expected===null?0:expected);
+ }
+ const listed=await (await f.request('/api/admin/grants',{admin:true})).json();
+ assert.equal(listed.grants.filter(grant=>grant.expiresAt===null).length,1);
+});
+test('permanent authorization lasts but its login session still expires in 15 minutes',async()=>{
+ const f=fixture();const grant=await f.create({days:0});f.tick(5*365*86400000);
+ const login=await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode}});
+ assert.equal(login.status,200);assert.equal((await login.json()).grant.expiresAt,null);
+ assert.match(login.headers.get('Set-Cookie'),/Max-Age=900/);const cookie=login.headers.get('Set-Cookie').split(';')[0];
+ assert.equal((await f.request('/api/session',{cookie})).status,200);
+ assert.equal((await f.request('/api/codes',{cookie})).status,200);
+ f.tick(901000);assert.equal((await f.request('/api/session',{cookie})).status,401);
+ const next=await f.login(grant);
+ await f.request(`/api/admin/grants/${grant.grant.id}/revoke`,{body:{},admin:true});
+ assert.equal((await f.request('/api/codes',{cookie:next})).status,403);
+ assert.equal((await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode}})).status,401);
+});
+test('permanent authorization retains query throttling and the daily mailbox-read budget',async()=>{
+ const f=fixture();const grant=await f.create({days:0});const cookie=await f.login(grant);
+ assert.equal((await f.request('/api/codes',{cookie})).status,200);
+ const reads=f.env.MAIL_DB.calls.length;
+ assert.equal((await f.request('/api/codes',{cookie})).status,429);assert.equal(f.env.MAIL_DB.calls.length,reads);
+ f.tick(5000);const day=new Date(f.now()+8*3600000).toISOString().slice(0,10);
+ f.shares.prepare('UPDATE share_grants SET next_poll_at=0,query_day=?,daily_queries=? WHERE id=?').run(day,DAILY_LIMIT,grant.grant.id);
+ assert.equal((await f.request('/api/codes',{cookie})).status,429);assert.equal(f.env.MAIL_DB.calls.length,reads);
+ f.tick(86400000);const next=await f.login(grant);
+ assert.equal((await f.request('/api/codes',{cookie:next})).status,200);
+ assert.equal(f.shares.prepare('SELECT daily_queries FROM share_grants WHERE id=?').get(grant.grant.id).daily_queries,1);
+});
+test('extension accumulates unused days and preserves credentials, mail boundary and query budget',async()=>{
+ const f=fixture();const grant=await f.create();const cookie=await f.login(grant);
+ assert.equal((await f.request('/api/codes',{cookie})).status,200);f.tick(1000);
+ const before=f.shares.prepare('SELECT * FROM share_grants WHERE id=?').get(grant.grant.id);
+ const mailReads=f.env.MAIL_DB.calls.length;
+ const response=await f.request(`/api/admin/grants/${grant.grant.id}/extend`,{body:{days:365},admin:true});
+ assert.equal(response.status,200);const result=await response.json();
+ assert.equal(result.grant.expiresAt,before.expires_at+365*86400000);assert.ok(!('passcode' in result));assert.ok(!('passcode_hash' in result.grant));
+ const after=f.shares.prepare('SELECT * FROM share_grants WHERE id=?').get(grant.grant.id);
+ assert.deepEqual({...after,expires_at:before.expires_at},{...before});assert.equal(f.env.MAIL_DB.calls.length,mailReads);
+ assert.equal((await f.request('/api/session',{cookie})).status,200);
+ assert.equal((await f.request('/api/codes',{cookie})).status,429);
+ const renewedCookie=await f.login(grant);f.tick(4000);f.addMail(2,'private@example.test');f.addMail(3);
+ const codes=await (await f.request('/api/codes',{cookie:renewedCookie})).json();assert.deepEqual(codes.messages.map(mail=>mail.id),[3]);
+ const second=await f.request(`/api/admin/grants/${grant.grant.id}/extend`,{body:{days:730},admin:true});
+ assert.equal((await second.json()).grant.expiresAt,before.expires_at+(365+730)*86400000);
+});
+test('expired but unrevoked grants can be extended from now using the same passcode',async()=>{
+ const f=fixture();const grant=await f.create({days:1});f.tick(2*86400000);
+ assert.equal((await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode}})).status,401);
+ const response=await f.request(`/api/admin/grants/${grant.grant.id}/extend`,{body:{days:365},admin:true});assert.equal(response.status,200);
+ assert.equal((await response.json()).grant.expiresAt,f.now()+365*86400000);await f.login(grant);
+ assert.equal(f.shares.prepare('SELECT cutoff_id FROM share_grants').get().cutoff_id,1);
+});
+test('extension can set permanent validity and cannot shorten existing permanent authorization',async()=>{
+ const f=fixture();const grant=await f.create();const cookie=await f.login(grant);
+ for(const days of [0,365,730,0]){
+  const response=await f.request(`/api/admin/grants/${grant.grant.id}/extend`,{body:{days},admin:true});
+  assert.equal(response.status,200);assert.equal((await response.json()).grant.expiresAt,null);
+  assert.equal(f.shares.prepare('SELECT expires_at FROM share_grants').get().expires_at,0);
+ }
+ assert.equal((await f.request('/api/session',{cookie})).status,200);await f.login(grant);
+});
+test('extension requires admin, same origin and an explicit valid duration only',async()=>{
+ const f=fixture();const grant=await f.create();const path=`/api/admin/grants/${grant.grant.id}/extend`;
+ const before=f.shares.prepare('SELECT * FROM share_grants').get();
+ assert.equal((await f.request(path,{body:{days:365}})).status,401);
+ assert.equal((await f.request(path,{body:{days:365},admin:true,origin:'https://evil.example'})).status,403);
+ for(const body of [{},{days:null},{days:false},{days:'365'},{days:-1},{days:3651},{days:1.5},{days:365,email:'private@example.test'},{days:365,passcode:'replace'}]){
+  assert.equal((await f.request(path,{body,admin:true})).status,400);
+ }
+ assert.deepEqual(f.shares.prepare('SELECT * FROM share_grants').get(),before);
+});
+test('revoked or missing grants cannot be extended and revocation stays intact',async()=>{
+ const f=fixture();const grant=await f.create();const cookie=await f.login(grant);
+ await f.request(`/api/admin/grants/${grant.grant.id}/revoke`,{body:{},admin:true});
+ const revoked=f.shares.prepare('SELECT * FROM share_grants').get();
+ for(const days of [365,0])assert.equal((await f.request(`/api/admin/grants/${grant.grant.id}/extend`,{body:{days},admin:true})).status,409);
+ assert.deepEqual(f.shares.prepare('SELECT * FROM share_grants').get(),revoked);
+ assert.equal((await f.request('/api/session',{cookie})).status,403);
+ assert.equal((await f.request(`/api/admin/grants/${'b'.repeat(32)}/extend`,{body:{days:365},admin:true})).status,404);
 });
 test('large HTML mail is bounded before extraction and only five messages are returned',async()=>{
  const f=fixture();const grant=await f.create();const cookie=await f.login(grant);

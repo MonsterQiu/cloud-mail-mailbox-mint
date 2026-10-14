@@ -4,16 +4,19 @@
 
 ## 使用
 
-管理员打开 `/admin`，输入独立管理口令。填写已有邮箱、备注和有效期（1 / 7 / 30 / 90 天），创建分享链接及随机访问口令。口令仅在创建时返回，服务器只保存哈希。分享人将链接和访问口令交给接收者，接收者无需安装扩展。
+管理员打开 `/admin`，输入独立管理口令。填写已有邮箱、备注和有效期，默认一年（365 天）；可选择 1 / 7 / 30 / 90 / 180 天、两年（730 天）或长期有效，创建分享链接及随机访问口令。口令仅在创建时返回，服务器只保存哈希。分享人将链接和访问口令交给接收者，接收者无需安装扩展。
+
+在“已有授权”中选择延期时长并点击“延期”，不必重新创建链接或口令。延期从原到期时间与当前时间中较晚者开始累计，未用完的有效期不会丢失；也可以设为长期有效。已过期但未撤销的授权可以延期，已撤销的授权不能延期或恢复。长期授权不会自动到期，仍可随时撤销。
 
 接收者打开 `/s/<grant-id>`，输入访问口令，点击刷新或等待新验证码。只展示授权创建后收到的最近 5 封未删除收件的高置信度验证码、发件人和北京时间，不开放原始正文、附件、主题、删除或发送邮件。等待最长 2 分钟，前 30 秒每 5 秒、30–60 秒每 10 秒、之后每 15 秒检查一次；进入后台停止。
 
-管理员撤销授权后，下一次请求会被拒绝，包括已经登录的会话。过期授权不能重新登录。重新创建授权会产生新链接、口令和新邮件边界。已被接收者复制走的验证码无法通过撤销收回。
+管理员撤销授权后，下一次请求会被拒绝，包括已经登录的会话。过期授权在管理员延期前不能重新登录。延期只改变有效期，保留邮箱、口令哈希、分享 ID、创建时间、邮件边界及查询预算；重新创建授权才会产生新链接、口令和新邮件边界。已被接收者复制走的验证码无法通过撤销收回。
 
 ## 权限与数据
 
 - `MAIL_DB`：绑定现有 Cloud Mail D1。应用代码只执行 SELECT；不会变更账号、邮件归属、邮件或附件。平台绑定本身不是数据库级只读权限，隔离由受测代码和管理口令实现。
 - `SHARE_DB`：独立的小数据库，仅保存授权地址、备注、口令哈希、有效期、最新邮件 ID 边界、撤销状态和查询预算。
+- 有效期数据库字段 `expires_at = 0` 表示长期有效，公开 API 返回 `expiresAt: null`。现有数据库无需迁移；原有有限期记录保持兼容。创建与延期 API 的 `days` 必须为整数，支持 1–3650 天，`0` 表示长期有效。只有创建时省略 `days` 才默认 365 天，延期必须显式提供时长。
 - `ADMIN_KEY`：独立随机管理口令，以 Cloudflare Secret 保存。没有复用 Cloud Mail 全站开放 API Token。
 - `SESSION_SECRET`：仅用于签署取码会话。Cookie 为 `HttpOnly; Secure; SameSite=Strict`，最长 15 分钟；每次查询重新检查撤销和过期状态。
 - `/api/codes` 从签名会话找到授权邮箱，不接受客户端收件地址或查询参数。通过完整地址等值过滤，并只读取授权边界之后的邮件。
@@ -37,7 +40,9 @@ Node 24+，Wrangler 4.148.0 或兼容版本。
 3. `node code-share/scripts/credentials.js` 生成 owner-only 的本地密钥文件。
 4. `wrangler deploy --config code-share/wrangler.local.json` 部署，未配置 Secret 时接口保持关闭。
 5. `wrangler secret bulk code-share/private/secrets.local.json --config code-share/wrangler.local.json` 上传 Secret。
-6. 在管理页创建授权，或执行 `node code-share/scripts/credentials.js create https://your-host.example mailbox@example.com`，交付文件会保存在被忽略的 `private/`。
+6. 在管理页创建授权，或执行 `node code-share/scripts/credentials.js create https://your-host.example mailbox@example.com [days]`，交付文件会保存在被忽略的 `private/`。省略时长默认 365 天，`0` 表示长期有效。
+
+已有授权也可用 `node code-share/scripts/credentials.js extend https://your-host.example <grant-id> [days]` 延期（默认增加 365 天，`0` 设为长期有效）。若本机有对应交付文件，只更新有效期，不改链接和口令；若没有本机文件，不会试图恢复或生成口令。
 
 可以在本地部署配置中增加 custom-domain route。更换对外域名不需要重新创建授权，`credentials.js origin https://your-host.example` 更新本机交付文件。
 
@@ -52,4 +57,4 @@ wrangler deploy --config code-share/wrangler.json --dry-run
 
 模拟页面为 `http://127.0.0.1:4174/s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`，口令 `demo-access-only`。所有数据在内存 SQLite，模拟页面不会连接生产服务；模拟管理口令仅用于开发。
 
-`tests/worker.test.js` 使用真实 SQLite 验证数据库条件、历史排除、邮箱隔离、登录 Cookie、撤销、过期、请求边界、限流、预算和最小返回字段。线上验收不向原邮件库写入测试邮件。
+`tests/worker.test.js` 使用真实 SQLite 验证数据库条件、历史排除、邮箱隔离、登录 Cookie、撤销、过期、延期、长期有效、请求边界、限流、预算和最小返回字段。授权延长不影响最长 15 分钟的登录会话，也不增加后台轮询。线上验收不向原邮件库写入测试邮件。

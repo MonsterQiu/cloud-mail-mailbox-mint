@@ -43,9 +43,13 @@ async function rate(env, name) {
   if (!env.AUTH_LIMITER) fail(503,'服务限流配置未就绪。');
   if (!(await env.AUTH_LIMITER.limit({key:name})).success) fail(429,'请求过于频繁，请稍后再试。',60);
 }
-function active(grant, now) { return grant && grant.revoked_at === null && grant.expires_at > now; }
+function active(grant, now) { return grant && grant.revoked_at === null && (grant.expires_at === 0 || grant.expires_at > now); }
+function durationDays(value) {
+  if (!Number.isInteger(value) || value < 0 || value > 3650) fail(400,'有效期须为 1–3650 天，或选择长期有效。');
+  return value;
+}
 function safeGrant(grant) {
-  return {id:grant.id,email:grant.email,label:grant.label,createdAt:grant.created_at,expiresAt:grant.expires_at,
+  return {id:grant.id,email:grant.email,label:grant.label,createdAt:grant.created_at,expiresAt:grant.expires_at === 0 ? null : grant.expires_at,
     revoked:grant.revoked_at !== null,cutoffId:grant.cutoff_id};
 }
 async function sessionGrant(request, env, now) {
@@ -90,7 +94,7 @@ export function makeWorker({now = () => Date.now()} = {}) {
           const day = new Date(timestamp + 8 * 3600000).toISOString().slice(0,10);
           const permit = await env.SHARE_DB.prepare(`UPDATE share_grants SET next_poll_at = ?, query_day = ?,
             daily_queries = CASE WHEN query_day = ? THEN daily_queries + 1 ELSE 1 END
-            WHERE id = ? AND revoked_at IS NULL AND expires_at > ? AND next_poll_at <= ?
+            WHERE id = ? AND revoked_at IS NULL AND (expires_at = 0 OR expires_at > ?) AND next_poll_at <= ?
             AND (query_day != ? OR daily_queries < ?) RETURNING id`)
             .bind(timestamp + POLL_INTERVAL_MS,day,day,grant.id,timestamp,timestamp,day,DAILY_LIMIT).first();
           if (!permit) fail(429,'查询太快或已达到今日上限，请稍后再试。',5);
@@ -114,16 +118,31 @@ export function makeWorker({now = () => Date.now()} = {}) {
             const body = await bodyJson(request); fields(body,['email','label','days']);
             let email; try { email = validateMailboxAddress(body.email,(env.ALLOWED_DOMAINS || '').split(',').filter(Boolean)); }
             catch { fail(400,'请填写可用域名的完整邮箱地址。'); }
-            const days = Number(body.days ?? 30); const label = String(body.label || '').trim();
-            if (!Number.isInteger(days) || days < 1 || days > 90 || label.length > 60) fail(400,'有效期须为 1–90 天，备注最多 60 字。');
+            const days = durationDays(body.days === undefined ? 365 : body.days); const label = String(body.label || '').trim();
+            if (label.length > 60) fail(400,'备注最多 60 字。');
             const account = await env.MAIL_DB.prepare('SELECT account_id FROM account WHERE email COLLATE NOCASE = ? AND is_del = 0').bind(email).first();
             if (!account) fail(404,'这个邮箱不存在或已停用。');
             const latest = await env.MAIL_DB.prepare('SELECT email_id FROM email WHERE to_email COLLATE NOCASE = ? AND type = 0 ORDER BY email_id DESC LIMIT 1').bind(email).first();
             const id = randomHex(16); const passcode = randomHex(12);
-            const grant = {id,email,label,created_at:timestamp,expires_at:timestamp + days * DAY_MS,cutoff_id:latest?.email_id || 0,revoked_at:null};
+            const grant = {id,email,label,created_at:timestamp,expires_at:days === 0 ? 0 : timestamp + days * DAY_MS,cutoff_id:latest?.email_id || 0,revoked_at:null};
             await env.SHARE_DB.prepare(`INSERT INTO share_grants (id,email,label,passcode_hash,created_at,expires_at,cutoff_id)
               VALUES (?,?,?,?,?,?,?)`).bind(id,email,label,await passcodeHash(id,passcode),timestamp,grant.expires_at,grant.cutoff_id).run();
             return json({grant:safeGrant(grant),passcode,shareUrl:`${url.origin}/s/${id}`},201);
+          }
+          const extension = path.match(/^\/api\/admin\/grants\/([a-f0-9]{32})\/extend$/);
+          if (extension && request.method === 'POST') {
+            const body = await bodyJson(request); fields(body,['days']);
+            const days = durationDays(body.days);
+            const grant = await env.SHARE_DB.prepare(`UPDATE share_grants SET expires_at =
+              CASE WHEN expires_at = 0 OR ? = 0 THEN 0 ELSE MAX(expires_at, ?) + ? END
+              WHERE id = ? AND revoked_at IS NULL RETURNING *`)
+              .bind(days,timestamp,days * DAY_MS,extension[1]).first();
+            if (!grant) {
+              const existing = await env.SHARE_DB.prepare('SELECT id FROM share_grants WHERE id = ?').bind(extension[1]).first();
+              if (!existing) fail(404,'没有这份授权。');
+              fail(409,'这份授权已撤销，不能延期。');
+            }
+            return json({grant:safeGrant(grant)});
           }
           const match = path.match(/^\/api\/admin\/grants\/([a-f0-9]{32})\/revoke$/);
           if (match && request.method === 'POST') {

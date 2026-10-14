@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS share_grants (
   label TEXT NOT NULL DEFAULT '',
   passcode_hash TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL, -- 0 means permanent; public API returns expiresAt: null.
   cutoff_id INTEGER NOT NULL,
   revoked_at INTEGER,
   next_poll_at INTEGER NOT NULL DEFAULT 0,
