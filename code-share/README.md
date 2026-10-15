@@ -35,7 +35,7 @@
 
 Node 24+，Wrangler 4.148.0 或兼容版本。
 
-1. 复制 `wrangler.json` 为 `wrangler.local.json`，填写正确账号、MAIL_DB 和独立 SHARE_DB ID；设置可分享的域名列表。
+1. 复制 `wrangler.json` 为 `wrangler.local.json`，填写正确账号、MAIL_DB 和独立 SHARE_DB ID；将 `vars.ALLOWED_DOMAINS` 设为允许分享的邮箱域名，用英文逗号分隔，例如 `example.com,example.net`。邮箱服务新增域名时，也要更新这份配置并重新部署取码服务；浏览器扩展的域名设置不会自动同步到这里。
 2. 在 SHARE_DB 执行 `schema.sql`，不要在生产邮件数据库执行。
 3. `node code-share/scripts/credentials.js` 生成 owner-only 的本地密钥文件。
 4. `wrangler deploy --config code-share/wrangler.local.json` 部署，未配置 Secret 时接口保持关闭。

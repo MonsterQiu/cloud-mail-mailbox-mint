@@ -116,12 +116,14 @@ export function makeWorker({now = () => Date.now()} = {}) {
           }
           if (path === '/api/admin/grants' && request.method === 'POST') {
             const body = await bodyJson(request); fields(body,['email','label','days']);
-            let email; try { email = validateMailboxAddress(body.email,(env.ALLOWED_DOMAINS || '').split(',').filter(Boolean)); }
-            catch { fail(400,'请填写可用域名的完整邮箱地址。'); }
+            let email; try { email = validateMailboxAddress(body.email); }
+            catch { fail(400,'邮箱地址格式不正确，请填写完整地址。'); }
+            const allowedDomains = (env.ALLOWED_DOMAINS || '').split(',').map(domain => domain.trim().toLowerCase()).filter(Boolean);
+            if (!allowedDomains.includes(email.split('@')[1])) fail(400,'此邮箱域名未启用取码分享，请联系管理员添加。');
             const days = durationDays(body.days === undefined ? 365 : body.days); const label = String(body.label || '').trim();
             if (label.length > 60) fail(400,'备注最多 60 字。');
             const account = await env.MAIL_DB.prepare('SELECT account_id FROM account WHERE email COLLATE NOCASE = ? AND is_del = 0').bind(email).first();
-            if (!account) fail(404,'这个邮箱不存在或已停用。');
+            if (!account) fail(404,'这个邮箱不存在或已停用，请先在邮箱后台确认。');
             const latest = await env.MAIL_DB.prepare('SELECT email_id FROM email WHERE to_email COLLATE NOCASE = ? AND type = 0 ORDER BY email_id DESC LIMIT 1').bind(email).first();
             const id = randomHex(16); const passcode = randomHex(12);
             const grant = {id,email,label,created_at:timestamp,expires_at:days === 0 ? 0 : timestamp + days * DAY_MS,cutoff_id:latest?.email_id || 0,revoked_at:null};

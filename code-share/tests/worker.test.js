@@ -48,6 +48,27 @@ test('a grant captures the existing mail boundary and stores only a passcode has
  const listed=await (await f.request('/api/admin/grants',{admin:true})).json();
  assert.ok(!JSON.stringify(listed).includes(row.passcode_hash));assert.ok(!JSON.stringify(listed).includes(grant.passcode));
 });
+test('a second configured mailbox domain can create a grant without exposing another inbox',async()=>{
+ const f=fixture();const secondary='alex@secondary.test';
+ f.env.ALLOWED_DOMAINS=' example.test , SECONDARY.TEST ';
+ f.mail.prepare('INSERT INTO account(email) VALUES (?)').run(secondary);
+ const response=await f.request('/api/admin/grants',{body:{email:secondary,days:365},admin:true});
+ assert.equal(response.status,201);const created=await response.json();const cookie=await f.login(created);
+ f.addMail(2,secondary);f.addMail(3,TARGET);
+ const codes=await (await f.request('/api/codes',{cookie})).json();
+ assert.equal(codes.email,secondary);assert.deepEqual(codes.messages.map(mail=>mail.id),[2]);
+});
+test('creation distinguishes invalid addresses, disabled domains and missing mailbox accounts',async()=>{
+ const f=fixture();
+ for(const [email,status,message] of [['invalid-address',400,/格式/],['alex@foreign.test',400,/域名.*未启用/],['alex@sub.example.test',400,/域名.*未启用/],['missing@example.test',404,/不存在或已停用/]]){
+  const response=await f.request('/api/admin/grants',{body:{email},admin:true});
+  assert.equal(response.status,status);assert.match((await response.json()).error,message);
+ }
+ f.env.ALLOWED_DOMAINS='';
+ const closed=await f.request('/api/admin/grants',{body:{email:TARGET},admin:true});
+ assert.equal(closed.status,400);assert.match((await closed.json()).error,/域名.*未启用/);
+ assert.equal(f.shares.prepare('SELECT COUNT(*) AS n FROM share_grants').get().n,0);
+});
 test('login uses secure HttpOnly cookies and wrong or unknown credentials fail identically',async()=>{
  const f=fixture();const grant=await f.create();
  const good=await f.request('/api/login',{body:{shareId:grant.grant.id,passcode:grant.passcode}});
